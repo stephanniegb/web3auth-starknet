@@ -6,8 +6,13 @@ import {
   useWeb3AuthDisconnect,
   useWeb3AuthUser,
 } from "@web3auth/modal/react";
-import { getPrivateKey, deployAccount } from "./starknetRPC";
-import { useState } from "react";
+import {
+  getPrivateKey,
+  deployAccount,
+  getStarkKey,
+  calculateAccountAddress,
+} from "./starknetRPC";
+import { useEffect, useState } from "react";
 import { Account, Contract, RpcProvider } from "starknet";
 import { CONTRACT_ABI } from "@/abi";
 import { CONTRACT_ADDRESS } from "@/address";
@@ -38,6 +43,30 @@ export default function Home() {
     nodeUrl: "https://starknet-sepolia.public.blastapi.io/rpc/v0_8",
   });
   const { userInfo } = useWeb3AuthUser();
+
+  useEffect(() => {
+    if (!provider) {
+      console.log("provider not initialized yet");
+      return;
+    }
+    const getAddress = async () => {
+      const privateKey = await getPrivateKey({ provider });
+      const validPrivateKey = `0x${privateKey}`;
+      const starkKeyPub = await getStarkKey({ privateKey: validPrivateKey });
+      if (!starkKeyPub) {
+        console.error("Starkey is undefined or null");
+        return;
+      }
+
+      const { OZcontractAddress } = calculateAccountAddress({
+        starkKeyPub: starkKeyPub,
+      });
+
+      setAddress(OZcontractAddress);
+    };
+
+    getAddress();
+  }, [provider]);
 
   const onDeployAccount = async () => {
     if (!provider) {
@@ -70,10 +99,8 @@ export default function Home() {
         ? rawPrivateKey
         : `0x${rawPrivateKey}`;
       console.log("🔑 Private key:", privateKey);
-      const accountAddress =
-        "0x037bb71018b8cbd0da6b4e5b0ed043fc135eb0fe5e8b168a39de68d7e660b80d";
 
-      const account = new Account(starknetProvider, accountAddress, privateKey);
+      const account = new Account(starknetProvider, address, privateKey);
       setAccount(account);
 
       console.log("Account instance created:", account);
@@ -174,7 +201,7 @@ export default function Home() {
           <div className="wallet-info">
             <div className="info-item">
               <span className="info-label">Wallet Address:</span>
-              <span className="info-value">
+              <span className="info-value text-sm">
                 {address || "Click 'Deploy Account' to create wallet"}
               </span>
             </div>
