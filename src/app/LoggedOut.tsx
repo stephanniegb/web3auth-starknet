@@ -1,8 +1,10 @@
 "use client";
 
+import { Web3AuthError } from "@web3auth/modal";
+
 interface LoggedOutProps {
   connectLoading: boolean;
-  connectError?: any;
+  connectError?: Web3AuthError | null;
   onConnect: () => void;
 }
 

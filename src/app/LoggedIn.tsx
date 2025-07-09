@@ -1,18 +1,24 @@
 "use client";
 
+import {
+  AuthUserInfo,
+  WALLET_CONNECTOR_TYPE,
+  Web3AuthError,
+} from "@web3auth/modal";
 import Image from "next/image";
+import { Account } from "starknet";
 
 interface LoggedInProps {
-  userInfo?: any;
+  userInfo?: Partial<AuthUserInfo> | null;
   address: string;
-  account?: any;
+  account?: Account | null;
   strkBalance: string;
-  connectorName?: any;
+  connectorName?: WALLET_CONNECTOR_TYPE | null;
   transferRecipient: string;
   transferAmount: string;
   isLoading: boolean;
   disconnectLoading: boolean;
-  disconnectError?: any;
+  disconnectError?: Web3AuthError | null;
   onDeployAccount: () => void;
   onConnectAccount: () => void;
   onFetchBalance: () => void;
