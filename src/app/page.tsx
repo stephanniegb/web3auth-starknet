@@ -7,10 +7,10 @@ import {
   useWeb3AuthUser,
 } from "@web3auth/modal/react";
 import {
-  getPrivateKey,
   deployAccount,
   getStarkKey,
   calculateAccountAddress,
+  getValidPrivateKey,
 } from "./starknetRPC";
 import { useEffect, useState } from "react";
 import { Account, Contract, RpcProvider } from "starknet";
@@ -53,9 +53,11 @@ export default function Home() {
       return;
     }
     const getAddress = async () => {
-      const privateKey = await getPrivateKey({ provider: web3authProvider });
-      const validPrivateKey = `0x${privateKey}`;
-      const starkKeyPub = await getStarkKey({ privateKey: validPrivateKey });
+      const privateKey = await getValidPrivateKey({
+        provider: web3authProvider,
+      });
+
+      const starkKeyPub = getStarkKey({ privateKey: privateKey });
       if (!starkKeyPub) {
         console.error("Starkey is undefined or null");
         return;
@@ -97,19 +99,14 @@ export default function Home() {
       console.log("provider not initialized yet");
       return;
     }
-
     setIsLoading(true);
     try {
-      const rawPrivateKey = await getPrivateKey({ provider: web3authProvider });
-      const privateKey = rawPrivateKey.startsWith("0x")
-        ? rawPrivateKey
-        : `0x${rawPrivateKey}`;
-      console.log("🔑 Private key:", privateKey);
+      const privateKey = await getValidPrivateKey({
+        provider: web3authProvider,
+      });
 
       const account = new Account(starknetProvider, address, privateKey);
       setAccount(account);
-
-      console.log("Account instance created:", account);
     } catch (error) {
       console.error("Error connecting account:", error);
     } finally {
@@ -123,8 +120,6 @@ export default function Home() {
       CONTRACT_ADDRESS,
       starknetProvider
     );
-
-    console.log("✅ contract instance created:", contract);
 
     if (!starknetProvider) {
       console.log("starknetProvider not initialized yet");
