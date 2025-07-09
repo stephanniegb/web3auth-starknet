@@ -1,101 +1,310 @@
+"use client";
+
+import {
+  useWeb3Auth,
+  useWeb3AuthConnect,
+  useWeb3AuthDisconnect,
+  useWeb3AuthUser,
+} from "@web3auth/modal/react";
+import { getPrivateKey, deployAccount } from "./starknetRPC";
+import { useState } from "react";
+import { Account, Contract, RpcProvider } from "starknet";
+import { CONTRACT_ABI } from "@/abi";
+import { CONTRACT_ADDRESS } from "@/address";
 import Image from "next/image";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [account, setAccount] = useState<Account | null>(null);
+  const [address, setAddress] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // IMP START - Login
+  const {
+    connect,
+    isConnected,
+    connectorName,
+    loading: connectLoading,
+    error: connectError,
+  } = useWeb3AuthConnect();
+
+  const {
+    disconnect,
+    loading: disconnectLoading,
+    error: disconnectError,
+  } = useWeb3AuthDisconnect();
+
+  const { provider } = useWeb3Auth();
+  const starknetProvider = new RpcProvider({
+    nodeUrl: "https://starknet-sepolia.public.blastapi.io/rpc/v0_8",
+  });
+  const { userInfo } = useWeb3AuthUser();
+
+  const onDeployAccount = async () => {
+    if (!provider) {
+      console.log("provider not initialized yet");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const address = await deployAccount({ provider, starknetProvider });
+      console.log("New account created.\n   final address =", address);
+      setAddress(address);
+    } catch (error) {
+      console.error("Error deploying account:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onConnectAccount = async () => {
+    if (!provider) {
+      console.log("provider not initialized yet");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const rawPrivateKey = await getPrivateKey({ provider });
+      const privateKey = rawPrivateKey.startsWith("0x")
+        ? rawPrivateKey
+        : `0x${rawPrivateKey}`;
+      console.log("🔑 Private key:", privateKey);
+      const accountAddress =
+        "0x037bb71018b8cbd0da6b4e5b0ed043fc135eb0fe5e8b168a39de68d7e660b80d";
+
+      const account = new Account(starknetProvider, accountAddress, privateKey);
+      setAccount(account);
+
+      console.log("Account instance created:", account);
+    } catch (error) {
+      console.error("Error connecting account:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const testContract = async () => {
+    const contract = new Contract(
+      CONTRACT_ABI,
+      CONTRACT_ADDRESS,
+      starknetProvider
+    );
+
+    console.log("✅ contract instance created:", contract);
+
+    if (!starknetProvider) {
+      console.log("starknetProvider not initialized yet");
+      return;
+    }
+
+    try {
+      const res = await contract.total_supply();
+      console.log("contract response:", res);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const transferToken = async () => {
+    if (!account) {
+      console.log("Account not initialized yet");
+      return;
+    }
+
+    if (!starknetProvider) {
+      console.log("starknetProvider not initialized yet");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const contract = new Contract(CONTRACT_ABI, CONTRACT_ADDRESS, account);
+      const res = await contract.transfer(
+        "0x059c368766C1E9699e21A099B3AEA95abC96A67aE36096aEB27891Dd3eE89bEA",
+        "1000000000000000000"
+      );
+      await starknetProvider.waitForTransaction(res.transaction_hash);
+      console.log("Transfer successful:", res);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loggedInView = (
+    <div className="dashboard">
+      {/* User Profile Section */}
+      <div className="profile-section">
+        <div className="profile-card">
+          <div className="profile-header">
+            <div className="profile-avatar">
+              {userInfo?.profileImage ? (
+                <Image
+                  src={userInfo.profileImage}
+                  alt={userInfo?.name || "User"}
+                  className="avatar-image"
+                  width={100}
+                  height={100}
+                  unoptimized
+                />
+              ) : (
+                <div className="avatar-placeholder">
+                  {userInfo?.name?.charAt(0) || "U"}
+                </div>
+              )}
+            </div>
+            <div className="profile-info">
+              <h2 className="profile-name">{userInfo?.name || "User"}</h2>
+              <p className="profile-email">{userInfo?.email}</p>
+              <div className="connection-badge">
+                <span className="badge-icon">🔗</span>
+                Connected via {userInfo?.authConnectionId || connectorName}
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Wallet Section */}
+      <div className="wallet-section">
+        <h3 className="section-title">Wallet Information</h3>
+        <div className="wallet-card">
+          <div className="wallet-info">
+            <div className="info-item">
+              <span className="info-label">Wallet Address:</span>
+              <span className="info-value">
+                {address || "Click 'Deploy Account' to create wallet"}
+              </span>
+            </div>
+            {account && (
+              <div className="info-item">
+                <span className="info-label">Account Status:</span>
+                <span className="status-connected">✅ Connected</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Actions Section */}
+      <div className="actions-section">
+        <h3 className="section-title">Blockchain Actions</h3>
+        <div className="actions-grid">
+          <button
+            onClick={onDeployAccount}
+            className="action-button primary"
+            disabled={isLoading}
+          >
+            {isLoading ? "⏳ Processing..." : "🚀 Deploy Account"}
+          </button>
+
+          <button
+            onClick={onConnectAccount}
+            className="action-button secondary"
+            disabled={isLoading}
+          >
+            {isLoading ? "⏳ Processing..." : "🔗 Connect Account"}
+          </button>
+
+          <button
+            onClick={testContract}
+            className="action-button secondary"
+            disabled={isLoading}
+          >
+            {isLoading ? "⏳ Processing..." : "📋 Test Contract"}
+          </button>
+
+          <button
+            onClick={transferToken}
+            className="action-button accent"
+            disabled={isLoading}
+          >
+            {isLoading ? "⏳ Processing..." : "💸 Transfer 1 STRK Token"}
+          </button>
+        </div>
+      </div>
+
+      {/* Disconnect Section */}
+      <div className="disconnect-section">
+        <button
+          onClick={() => disconnect()}
+          className="disconnect-button"
+          disabled={disconnectLoading}
+        >
+          {disconnectLoading ? "Disconnecting..." : "🔓 Disconnect"}
+        </button>
+        {disconnectError && (
+          <div className="error-message">{disconnectError.message}</div>
+        )}
+      </div>
+    </div>
+  );
+
+  const unloggedInView = (
+    <div className="login-section">
+      <div className="login-card">
+        <div className="login-header">
+          <h2 className="login-title">Welcome to Web3Auth Demo</h2>
+          <p className="login-subtitle">
+            Connect your wallet to explore StarkNet functionality
+          </p>
+        </div>
+
+        <button
+          onClick={() => connect()}
+          className="login-button"
+          disabled={connectLoading}
+        >
+          {connectLoading ? (
+            <>
+              <span className="loading-spinner"></span>
+              Connecting...
+            </>
+          ) : (
+            <>
+              <span className="button-icon">🔐</span>
+              Login with Web3Auth
+            </>
+          )}
+        </button>
+
+        {connectError && (
+          <div className="error-message">{connectError.message}</div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="app-container">
+      <header className="app-header">
+        <h1 className="app-title">
+          <a
+            target="_blank"
+            href="https://web3auth.io/docs/sdk/pnp/web/modal"
+            rel="noreferrer"
+          >
+            Web3Auth
+          </a>
+          <span className="title-separator">×</span>
+          <span>StarkNet Demo</span>
+        </h1>
+      </header>
+
+      <main className="app-main">
+        {isConnected ? loggedInView : unloggedInView}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
+
+      <footer className="app-footer">
         <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          href="https://github.com/Web3Auth/web3auth-examples/tree/main/quick-starts/react-quick-start"
           target="_blank"
           rel="noopener noreferrer"
+          className="footer-link"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
+          📚 View Source Code
         </a>
       </footer>
     </div>
