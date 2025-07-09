@@ -1,6 +1,6 @@
 import { IProvider } from "@web3auth/modal";
 
-import { Account, CallData, ec as elliptic, hash, RpcProvider } from "starknet";
+import { Account, CallData, ec, hash, RpcProvider } from "starknet";
 
 export const OZaccountClassHash =
   "0x540d7f5ec7ecf317e68d48564934cb99259781b1ee3cedbbc37ec5337f8e688";
@@ -9,9 +9,9 @@ export async function getPrivateKey({
   provider,
 }: {
   provider: IProvider;
-}): Promise<any> {
+}): Promise<string> {
   try {
-    return await provider.request({ method: "private_key" });
+    return (await provider.request({ method: "private_key" })) as string;
   } catch (error) {
     return error as string;
   }
@@ -19,7 +19,7 @@ export async function getPrivateKey({
 
 export async function getStarkKey({ privateKey }: { privateKey: string }) {
   try {
-    const keyPair = elliptic.starkCurve.getStarkKey(privateKey);
+    const keyPair = ec.starkCurve.getStarkKey(privateKey);
     return keyPair;
   } catch (error) {
     console.error("Error generating StarkNet public key:", error);
@@ -27,29 +27,33 @@ export async function getStarkKey({ privateKey }: { privateKey: string }) {
 }
 
 export async function deployAccount({
-  provider,
+  web3authProvider,
   starknetProvider,
 }: {
-  provider: any;
+  web3authProvider: IProvider;
   starknetProvider: RpcProvider;
 }) {
   try {
-    const privateKey = await getPrivateKey({ provider });
+    // 1. Generate public and private key pair.
+
+    // use the web3auth provider to get the private key of the user.
+    const privateKey = await getPrivateKey({ provider: web3authProvider });
 
     const validPrivateKey = `0x${privateKey}`;
 
-    console.log("🔑 Generating StarkNet public key...");
     const starkKeyPub = await getStarkKey({ privateKey: validPrivateKey });
-    console.log("✅ StarkNet public key generated:", starkKeyPub);
 
-    const resp = await starknetProvider.getSpecVersion();
-    console.log("RPC version =", resp);
+    console.log("publicKey=", starkKeyPub);
 
-    // Calculate future address of the account
+    // make sure to use the right rpc version (using RPC 0.8 provider)
+    // const resp = await starknetProvider.getSpecVersion();
+    // console.log("RPC version =", resp);
+
     if (!starkKeyPub) {
       throw new Error("StarkNet public key is undefined or null");
     }
 
+    // 2. Calculate future address of the account (Then you have to fund this address!)
     const { OZcontractAddress, OZaccountConstructorCallData } =
       calculateAccountAddress({
         starkKeyPub: starkKeyPub,
@@ -57,8 +61,7 @@ export async function deployAccount({
 
     console.log("✅ Calculated address:", OZcontractAddress);
 
-    // Deployment of the new account
-    console.log("🏗️ Creating Account instance...");
+    // 3. Deployment of the new account
 
     const OZaccount = new Account(
       starknetProvider,
@@ -67,8 +70,6 @@ export async function deployAccount({
     );
     console.log("✅ Account instance created");
 
-    console.log("📤 Deploying account to StarkNet...");
-
     const { transaction_hash, contract_address } =
       await OZaccount.deployAccount({
         classHash: OZaccountClassHash,
@@ -76,10 +77,6 @@ export async function deployAccount({
         contractAddress: OZcontractAddress,
         addressSalt: starkKeyPub,
       });
-
-    console.log("✅ Deployment transaction submitted!");
-
-    console.log("🏠 Contract address:", contract_address);
 
     await starknetProvider.waitForTransaction(transaction_hash);
 

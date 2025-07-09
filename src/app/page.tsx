@@ -38,19 +38,22 @@ export default function Home() {
     error: disconnectError,
   } = useWeb3AuthDisconnect();
 
-  const { provider } = useWeb3Auth();
+  // get a standard provider from web3auth which you can get the private key of the user.
+  const { provider: web3authProvider } = useWeb3Auth();
+
+  // create a starknet provider to interact with the starknet blockchain
   const starknetProvider = new RpcProvider({
     nodeUrl: "https://starknet-sepolia.public.blastapi.io/rpc/v0_8",
   });
   const { userInfo } = useWeb3AuthUser();
 
   useEffect(() => {
-    if (!provider) {
+    if (!web3authProvider) {
       console.log("provider not initialized yet");
       return;
     }
     const getAddress = async () => {
-      const privateKey = await getPrivateKey({ provider });
+      const privateKey = await getPrivateKey({ provider: web3authProvider });
       const validPrivateKey = `0x${privateKey}`;
       const starkKeyPub = await getStarkKey({ privateKey: validPrivateKey });
       if (!starkKeyPub) {
@@ -66,17 +69,20 @@ export default function Home() {
     };
 
     getAddress();
-  }, [provider]);
+  }, [web3authProvider]);
 
   const onDeployAccount = async () => {
-    if (!provider) {
+    if (!web3authProvider) {
       console.log("provider not initialized yet");
       return;
     }
 
     setIsLoading(true);
     try {
-      const address = await deployAccount({ provider, starknetProvider });
+      const address = await deployAccount({
+        web3authProvider,
+        starknetProvider,
+      });
       console.log("New account created.\n   final address =", address);
       setAddress(address);
     } catch (error) {
@@ -87,14 +93,14 @@ export default function Home() {
   };
 
   const onConnectAccount = async () => {
-    if (!provider) {
+    if (!web3authProvider) {
       console.log("provider not initialized yet");
       return;
     }
 
     setIsLoading(true);
     try {
-      const rawPrivateKey = await getPrivateKey({ provider });
+      const rawPrivateKey = await getPrivateKey({ provider: web3authProvider });
       const privateKey = rawPrivateKey.startsWith("0x")
         ? rawPrivateKey
         : `0x${rawPrivateKey}`;
