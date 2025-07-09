@@ -12,18 +12,23 @@ import {
   calculateAccountAddress,
   getValidPrivateKey,
 } from "./starknetRPC";
+import { fetchBalance, transferToken } from "./tokenOperations";
 import { useEffect, useState } from "react";
-import { Account, Contract, RpcProvider } from "starknet";
-import { CONTRACT_ABI } from "@/abi";
-import { CONTRACT_ADDRESS } from "@/address";
-import Image from "next/image";
+import { Account, RpcProvider } from "starknet";
+
+import LoggedIn from "./LoggedIn";
+import LoggedOut from "./LoggedOut";
 
 export default function Home() {
+  // State management
   const [account, setAccount] = useState<Account | null>(null);
   const [address, setAddress] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [transferRecipient, setTransferRecipient] = useState<string>("");
+  const [transferAmount, setTransferAmount] = useState<string>("1");
+  const [strkBalance, setStrkBalance] = useState<string>("0");
 
-  // IMP START - Login
+  // Web3Auth hooks
   const {
     connect,
     isConnected,
@@ -38,20 +43,21 @@ export default function Home() {
     error: disconnectError,
   } = useWeb3AuthDisconnect();
 
-  // get a standard provider from web3auth which you can get the private key of the user.
   const { provider: web3authProvider } = useWeb3Auth();
+  const { userInfo } = useWeb3AuthUser();
 
-  // create a starknet provider to interact with the starknet blockchain
+  // StarkNet provider setup
   const starknetProvider = new RpcProvider({
     nodeUrl: "https://starknet-sepolia.public.blastapi.io/rpc/v0_8",
   });
-  const { userInfo } = useWeb3AuthUser();
 
+  // Effect to get address when provider is available
   useEffect(() => {
     if (!web3authProvider) {
       console.log("provider not initialized yet");
       return;
     }
+
     const getAddress = async () => {
       const privateKey = await getValidPrivateKey({
         provider: web3authProvider,
@@ -73,6 +79,14 @@ export default function Home() {
     getAddress();
   }, [web3authProvider]);
 
+  // Effect to fetch balance when address changes
+  useEffect(() => {
+    if (address) {
+      fetchBalance(address, starknetProvider, setStrkBalance);
+    }
+  }, [address]);
+
+  // Deploy  account functions
   const onDeployAccount = async () => {
     if (!web3authProvider) {
       console.log("provider not initialized yet");
@@ -94,6 +108,7 @@ export default function Home() {
     }
   };
 
+  // Connect account function
   const onConnectAccount = async () => {
     if (!web3authProvider) {
       console.log("provider not initialized yet");
@@ -114,227 +129,124 @@ export default function Home() {
     }
   };
 
-  const testContract = async () => {
-    const contract = new Contract(
-      CONTRACT_ABI,
-      CONTRACT_ADDRESS,
-      starknetProvider
+  const handleFetchBalance = () => {
+    fetchBalance(address, starknetProvider, setStrkBalance);
+  };
+
+  const handleTransferToken = () => {
+    transferToken(
+      account!,
+      starknetProvider,
+      transferRecipient,
+      transferAmount,
+      setIsLoading
     );
-
-    if (!starknetProvider) {
-      console.log("starknetProvider not initialized yet");
-      return;
-    }
-
-    try {
-      const res = await contract.total_supply();
-      console.log("contract response:", res);
-    } catch (error) {
-      console.log(error);
-    }
   };
 
-  const transferToken = async () => {
-    if (!account) {
-      console.log("Account not initialized yet");
-      return;
-    }
-
-    if (!starknetProvider) {
-      console.log("starknetProvider not initialized yet");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const contract = new Contract(CONTRACT_ABI, CONTRACT_ADDRESS, account);
-      const res = await contract.transfer(
-        "0x059c368766C1E9699e21A099B3AEA95abC96A67aE36096aEB27891Dd3eE89bEA",
-        "1000000000000000000"
-      );
-      await starknetProvider.waitForTransaction(res.transaction_hash);
-      console.log("Transfer successful:", res);
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setIsLoading(false);
-    }
+  // Event handlers for UI
+  const handleTransferRecipientChange = (value: string) => {
+    setTransferRecipient(value);
   };
 
-  const loggedInView = (
-    <div className="dashboard">
-      {/* User Profile Section */}
-      <div className="profile-section">
-        <div className="profile-card">
-          <div className="profile-header">
-            <div className="profile-avatar">
-              {userInfo?.profileImage ? (
-                <Image
-                  src={userInfo.profileImage}
-                  alt={userInfo?.name || "User"}
-                  className="avatar-image"
-                  width={100}
-                  height={100}
-                  unoptimized
-                />
-              ) : (
-                <div className="avatar-placeholder">
-                  {userInfo?.name?.charAt(0) || "U"}
-                </div>
-              )}
-            </div>
-            <div className="profile-info">
-              <h2 className="profile-name">{userInfo?.name || "User"}</h2>
-              <p className="profile-email">{userInfo?.email}</p>
-              <div className="connection-badge">
-                <span className="badge-icon">🔗</span>
-                Connected via {userInfo?.authConnectionId || connectorName}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+  const handleTransferAmountChange = (value: string) => {
+    setTransferAmount(value);
+  };
 
-      {/* Wallet Section */}
-      <div className="wallet-section">
-        <h3 className="section-title">Wallet Information</h3>
-        <div className="wallet-card">
-          <div className="wallet-info">
-            <div className="info-item">
-              <span className="info-label">Wallet Address:</span>
-              <span className="info-value text-sm">
-                {address || "Click 'Deploy Account' to create wallet"}
-              </span>
-            </div>
-            {account && (
-              <div className="info-item">
-                <span className="info-label">Account Status:</span>
-                <span className="status-connected">✅ Connected</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+  const handleConnect = () => {
+    connect();
+  };
 
-      {/* Actions Section */}
-      <div className="actions-section">
-        <h3 className="section-title">Blockchain Actions</h3>
-        <div className="actions-grid">
-          <button
-            onClick={onDeployAccount}
-            className="action-button primary"
-            disabled={isLoading}
-          >
-            {isLoading ? "⏳ Processing..." : "🚀 Deploy Account"}
-          </button>
+  const handleDisconnect = () => {
+    disconnect();
+  };
 
-          <button
-            onClick={onConnectAccount}
-            className="action-button secondary"
-            disabled={isLoading}
-          >
-            {isLoading ? "⏳ Processing..." : "🔗 Connect Account"}
-          </button>
+  // Render based on connection state
+  if (isConnected) {
+    return (
+      <div className="app-container">
+        <header className="app-header">
+          <h1 className="app-title">
+            <a
+              target="_blank"
+              href="https://web3auth.io/docs/sdk/pnp/web/modal"
+              rel="noreferrer"
+            >
+              Web3Auth
+            </a>
+            <span className="title-separator">×</span>
+            <span>StarkNet Demo</span>
+          </h1>
+        </header>
 
-          <button
-            onClick={testContract}
-            className="action-button secondary"
-            disabled={isLoading}
-          >
-            {isLoading ? "⏳ Processing..." : "📋 Test Contract"}
-          </button>
+        <main className="app-main">
+          <LoggedIn
+            userInfo={userInfo}
+            address={address}
+            strkBalance={strkBalance}
+            connectorName={connectorName}
+            transferRecipient={transferRecipient}
+            transferAmount={transferAmount}
+            isLoading={isLoading}
+            disconnectLoading={disconnectLoading}
+            disconnectError={disconnectError}
+            onDeployAccount={onDeployAccount}
+            onConnectAccount={onConnectAccount}
+            onFetchBalance={handleFetchBalance}
+            onTransferToken={handleTransferToken}
+            onDisconnect={handleDisconnect}
+            onTransferRecipientChange={handleTransferRecipientChange}
+            onTransferAmountChange={handleTransferAmountChange}
+          />
+        </main>
 
-          <button
-            onClick={transferToken}
-            className="action-button accent"
-            disabled={isLoading}
-          >
-            {isLoading ? "⏳ Processing..." : "💸 Transfer 1 STRK Token"}
-          </button>
-        </div>
-      </div>
-
-      {/* Disconnect Section */}
-      <div className="disconnect-section">
-        <button
-          onClick={() => disconnect()}
-          className="disconnect-button"
-          disabled={disconnectLoading}
-        >
-          {disconnectLoading ? "Disconnecting..." : "🔓 Disconnect"}
-        </button>
-        {disconnectError && (
-          <div className="error-message">{disconnectError.message}</div>
-        )}
-      </div>
-    </div>
-  );
-
-  const unloggedInView = (
-    <div className="login-section">
-      <div className="login-card">
-        <div className="login-header">
-          <h2 className="login-title">Welcome to Web3Auth Demo</h2>
-          <p className="login-subtitle">
-            Connect your wallet to explore StarkNet functionality
-          </p>
-        </div>
-
-        <button
-          onClick={() => connect()}
-          className="login-button"
-          disabled={connectLoading}
-        >
-          {connectLoading ? (
-            <>
-              <span className="loading-spinner"></span>
-              Connecting...
-            </>
-          ) : (
-            <>
-              <span className="button-icon">🔐</span>
-              Login with Web3Auth
-            </>
-          )}
-        </button>
-
-        {connectError && (
-          <div className="error-message">{connectError.message}</div>
-        )}
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1 className="app-title">
+        <footer className="app-footer">
           <a
+            href="https://github.com/stephanniegb/web3auth-starknet"
             target="_blank"
-            href="https://web3auth.io/docs/sdk/pnp/web/modal"
-            rel="noreferrer"
+            rel="noopener noreferrer"
+            className="footer-link"
           >
-            Web3Auth
+            📚 View Source Code
           </a>
-          <span className="title-separator">×</span>
-          <span>StarkNet Demo</span>
-        </h1>
-      </header>
+        </footer>
+      </div>
+    );
+  } else {
+    return (
+      <div className="app-container">
+        <header className="app-header">
+          <h1 className="app-title">
+            <a
+              target="_blank"
+              href="https://web3auth.io/docs/sdk/pnp/web/modal"
+              rel="noreferrer"
+            >
+              Web3Auth
+            </a>
+            <span className="title-separator">×</span>
+            <span>StarkNet Demo</span>
+          </h1>
+        </header>
 
-      <main className="app-main">
-        {isConnected ? loggedInView : unloggedInView}
-      </main>
+        <main className="app-main">
+          <LoggedOut
+            connectLoading={connectLoading}
+            connectError={connectError}
+            onConnect={handleConnect}
+          />
+        </main>
 
-      <footer className="app-footer">
-        <a
-          href="https://github.com/Web3Auth/web3auth-examples/tree/main/quick-starts/react-quick-start"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="footer-link"
-        >
-          📚 View Source Code
-        </a>
-      </footer>
-    </div>
-  );
+        <footer className="app-footer">
+          <a
+            href="https://github.com/stephanniegb/web3auth-starknet"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer-link"
+          >
+            📚 View Source Code
+          </a>
+        </footer>
+      </div>
+    );
+  }
 }
