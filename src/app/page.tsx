@@ -182,6 +182,7 @@ export default function Home() {
           <LoggedIn
             userInfo={userInfo}
             address={address}
+            account={account}
             strkBalance={strkBalance}
             connectorName={connectorName}
             transferRecipient={transferRecipient}
