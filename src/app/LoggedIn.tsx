@@ -197,21 +197,22 @@ export default function LoggedIn({
             <ol>
               <li>
                 <p>
-                  Deploy your account by clicking the "Deploy Account" button.
-                  do this if you have not done it before with the logged in
-                  account. This will create a new account on StarkNet.
+                  Deploy your account by clicking the &quot;Deploy Account&quot;
+                  button. do this if you have not done it before with the logged
+                  in account. This will create a new account on StarkNet.
                 </p>
               </li>
               <li>
                 <p>
-                  Connect your account by clicking the "Connect Account" button.
-                  This will connect your account to the StarkNet blockchain.
+                  Connect your account by clicking the &quot;Connect
+                  Account&quot; button. This will connect your account to the
+                  StarkNet blockchain.
                 </p>
               </li>
               <li>
                 <p>
-                  Test the by clicking the "Transfer Token" button to send STRK
-                  token to another address.
+                  Test the by clicking the &quot;Transfer Token&quot; button to
+                  send STRK token to another address.
                 </p>
               </li>
             </ol>

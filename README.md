@@ -46,6 +46,12 @@ Visit `http://localhost:3000` in your browser to see the application running.
 - [Developer Dashboard](https://dashboard.web3auth.io)
 - [Web3Auth Community](https://web3auth.io/community)
 
+## ⭐ Star this repo
+
+If this project was helpful to you, please consider giving it a star! It helps others discover this resource and motivates me to continue building useful tools for the community.
+
+[![Star this repo](https://img.shields.io/github/stars/stephanniegb/web3auth-starknet?style=social)](https://github.com/stephanniegb/web3auth-starknet)
+
 ## License
 
 MIT
