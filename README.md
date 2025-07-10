@@ -24,10 +24,10 @@ npm install
 
 ### 3. Configure environment variables
 
-Create a `.env` file and add your Web3Auth Client ID:
+Create a `.env` file and add your Web3Auth Client ID and RPC provider urls:
 
 ```bash
-NEXT_PUBLIC_WEB3AUTH_CLIENT_ID=YOUR_WEB3AUTH_CLIENT_ID
+cp .env.example .env.local
 ```
 
 ### 4. Run the application

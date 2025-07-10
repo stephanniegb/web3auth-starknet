@@ -19,6 +19,8 @@ import { Account, RpcProvider } from "starknet";
 import LoggedIn from "./LoggedIn";
 import LoggedOut from "./LoggedOut";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export default function Home() {
   // State management
   const [account, setAccount] = useState<Account | null>(null);
@@ -48,7 +50,9 @@ export default function Home() {
 
   // StarkNet provider setup
   const starknetProvider = new RpcProvider({
-    nodeUrl: "https://starknet-sepolia.public.blastapi.io/rpc/v0_8",
+    nodeUrl: isProduction
+      ? process.env.NEXT_PUBLIC_STARKNET_JSON_RPC_URL_MAINNET
+      : process.env.NEXT_PUBLIC_STARKNET_JSON_RPC_URL_SEPOLIA,
   });
 
   // Effect to get address when provider is available
