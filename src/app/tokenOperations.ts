@@ -1,4 +1,11 @@
-import { Account, Contract, RpcProvider } from "starknet";
+import {
+  Account,
+  Call,
+  CallData,
+  Contract,
+  PaymasterDetails,
+  RpcProvider,
+} from "starknet";
 import { CONTRACT_ABI } from "@/abi";
 import { CONTRACT_ADDRESS } from "@/address";
 
@@ -56,14 +63,34 @@ export const transferToken = async (
 
   setIsLoading(true);
   try {
+    const feesDetails: PaymasterDetails = {
+      feeMode: { mode: "sponsored" },
+    };
+
+    console.log({ feesDetails });
+
     // Convert amount to proper format (assuming 18 decimals like ETH)
     // Use BigInt for precise calculation
     const amountInWei = BigInt(
       Math.floor(parseFloat(transferAmount) * Math.pow(10, 18))
     ).toString();
 
-    const contract = new Contract(CONTRACT_ABI, CONTRACT_ADDRESS, account);
-    const res = await contract.transfer(transferRecipient, amountInWei);
+    // const contract = new Contract(CONTRACT_ABI, CONTRACT_ADDRESS, account);
+
+    const transferCallData: CallData = new CallData(CONTRACT_ABI);
+    const transferCall: Call = {
+      contractAddress: CONTRACT_ADDRESS,
+      entrypoint: "transfer",
+      calldata: transferCallData.compile("transfer", [
+        transferRecipient,
+        amountInWei,
+      ]),
+    };
+    console.log({ transferCall });
+    const res = await account.executePaymasterTransaction(
+      [transferCall],
+      feesDetails
+    );
     await starknetProvider.waitForTransaction(res.transaction_hash);
     console.log("Transfer successful:", res);
   } catch (error) {

@@ -1,6 +1,7 @@
 import { IProvider } from "@web3auth/modal";
 import { Account, CallData, ec, hash, RpcProvider } from "starknet";
 import { keccak256 } from "js-sha3";
+import { fetchAccountCompatibility } from "@avnu/gasless-sdk";
 
 export const OZaccountClassHash =
   "0x540d7f5ec7ecf317e68d48564934cb99259781b1ee3cedbbc37ec5337f8e688";
@@ -122,3 +123,8 @@ export async function deployAccount({
     throw error;
   }
 }
+
+export const checkGaslessCompatibility = async (accountAddress: string) => {
+  const compatibility = await fetchAccountCompatibility(accountAddress);
+  console.log("Gasless Compatible:", compatibility.isCompatible);
+};
