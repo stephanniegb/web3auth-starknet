@@ -63,7 +63,9 @@ export default function Home() {
 
   const myPaymasterRpc = new PaymasterRpc({
     nodeUrl: "https://sepolia.paymaster.avnu.fi",
-    headers: { "api-key": process.env.PAYMASTER_API_KEY },
+    headers: {
+      "x-paymaster-api-key": process.env.NEXT_PUBLIC_PAYMASTER_API_KEY,
+    },
   });
 
   // Effect to get address when provider is available
@@ -84,11 +86,11 @@ export default function Home() {
         return;
       }
 
-      const { OZcontractAddress } = calculateAccountAddress({
-        starkKeyPub: starkKeyPub,
+      const { AXcontractAddress } = calculateAccountAddress({
+        starkKeyPubAX: starkKeyPub,
       });
 
-      setAddress(OZcontractAddress);
+      setAddress(AXcontractAddress);
     };
 
     getAddress();
@@ -114,6 +116,7 @@ export default function Home() {
       const address = await deployAccount({
         web3authProvider,
         starknetProvider,
+        paymasterRpc: myPaymasterRpc,
       });
       console.log("New account created.\n   final address =", address);
       setAddress(address);

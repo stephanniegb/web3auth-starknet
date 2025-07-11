@@ -126,7 +126,7 @@ export const transferToken = async (
         amountInWei,
       ]),
     };
-    console.log({ transferCall });
+    console.log({ transferCall, amountInWei });
     const res = await account.executePaymasterTransaction(
       [transferCall],
       feesDetails
