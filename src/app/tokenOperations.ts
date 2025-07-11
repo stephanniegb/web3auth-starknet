@@ -1,6 +1,7 @@
 import { Account, Contract, RpcProvider } from "starknet";
 import { CONTRACT_ABI } from "@/abi";
 import { CONTRACT_ADDRESS } from "@/address";
+import { fetchAccountCompatibility } from "@avnu/gasless-sdk";
 
 export const fetchBalance = async (
   address: string,
@@ -71,4 +72,9 @@ export const transferToken = async (
   } finally {
     setIsLoading(false);
   }
+};
+
+export const checkGaslessCompatibility = async (accountAddress: string) => {
+  const compatibility = await fetchAccountCompatibility(accountAddress);
+  console.log("Gasless Compatible:", compatibility.isCompatible);
 };
