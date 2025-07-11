@@ -12,14 +12,19 @@ import {
   calculateAccountAddress,
   getValidPrivateKey,
 } from "./starknetRPC";
-import { fetchBalance, transferToken } from "./tokenOperations";
+import {
+  checkGaslessCompatibility,
+  fetchBalance,
+  transferToken,
+} from "./tokenOperations";
 import { useEffect, useState } from "react";
-import { Account, RpcProvider } from "starknet";
+import { Account, PaymasterRpc, RpcProvider } from "starknet";
 
 import LoggedIn from "./LoggedIn";
 import LoggedOut from "./LoggedOut";
 
 const isProduction = process.env.NODE_ENV === "production";
+console.log({ isProduction });
 
 export default function Home() {
   // State management
@@ -46,6 +51,7 @@ export default function Home() {
   } = useWeb3AuthDisconnect();
 
   const { provider: web3authProvider } = useWeb3Auth();
+
   const { userInfo } = useWeb3AuthUser();
 
   // StarkNet provider setup
@@ -53,6 +59,11 @@ export default function Home() {
     nodeUrl: isProduction
       ? process.env.NEXT_PUBLIC_STARKNET_JSON_RPC_URL_MAINNET
       : process.env.NEXT_PUBLIC_STARKNET_JSON_RPC_URL_SEPOLIA,
+  });
+
+  const myPaymasterRpc = new PaymasterRpc({
+    nodeUrl: "https://sepolia.paymaster.avnu.fi",
+    headers: { "api-key": process.env.PAYMASTER_API_KEY },
   });
 
   // Effect to get address when provider is available
@@ -87,6 +98,7 @@ export default function Home() {
   useEffect(() => {
     if (address) {
       fetchBalance(address, starknetProvider, setStrkBalance);
+      checkGaslessCompatibility(address);
     }
   }, [address]);
 
@@ -124,8 +136,19 @@ export default function Home() {
         provider: web3authProvider,
       });
 
-      const account = new Account(starknetProvider, address, privateKey);
+      const account = new Account(
+        starknetProvider,
+        address,
+        privateKey,
+        undefined,
+        undefined,
+        myPaymasterRpc
+      );
       setAccount(account);
+
+      const supported = await account.paymaster.getSupportedTokens();
+
+      console.log(supported);
     } catch (error) {
       console.error("Error connecting account:", error);
     } finally {
