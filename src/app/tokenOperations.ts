@@ -1,14 +1,6 @@
-import {
-  Account,
-  Call,
-  CallData,
-  Contract,
-  PaymasterDetails,
-  RpcProvider,
-} from "starknet";
+import { Account, Contract, RpcProvider } from "starknet";
 import { CONTRACT_ABI } from "@/abi";
 import { CONTRACT_ADDRESS } from "@/address";
-import { fetchAccountCompatibility } from "@avnu/gasless-sdk";
 
 export const fetchBalance = async (
   address: string,
@@ -40,47 +32,6 @@ export const fetchBalance = async (
   }
 };
 
-// export const transferToken = async (
-//   account: Account,
-//   starknetProvider: RpcProvider,
-//   transferRecipient: string,
-//   transferAmount: string,
-//   setIsLoading: (loading: boolean) => void
-// ) => {
-//   if (!account) {
-//     console.log("Account not initialized yet");
-//     return;
-//   }
-
-//   if (!starknetProvider) {
-//     console.log("starknetProvider not initialized yet");
-//     return;
-//   }
-
-//   if (!transferRecipient || !transferAmount) {
-//     console.log("Please enter recipient address and amount");
-//     return;
-//   }
-
-//   setIsLoading(true);
-//   try {
-//     // Convert amount to proper format (assuming 18 decimals like ETH)
-//     // Use BigInt for precise calculation
-//     const amountInWei = BigInt(
-//       Math.floor(parseFloat(transferAmount) * Math.pow(10, 18))
-//     ).toString();
-
-//     const contract = new Contract(CONTRACT_ABI, CONTRACT_ADDRESS, account);
-//     const res = await contract.transfer(transferRecipient, amountInWei);
-//     await starknetProvider.waitForTransaction(res.transaction_hash);
-//     console.log("Transfer successful:", res);
-//   } catch (error) {
-//     console.log(error);
-//   } finally {
-//     setIsLoading(false);
-//   }
-// };
-
 export const transferToken = async (
   account: Account,
   starknetProvider: RpcProvider,
@@ -105,12 +56,6 @@ export const transferToken = async (
 
   setIsLoading(true);
   try {
-    const feesDetails: PaymasterDetails = {
-      feeMode: { mode: "sponsored" },
-    };
-
-    console.log({ feesDetails });
-
     // Convert amount to proper format (assuming 18 decimals like ETH)
     // Use BigInt for precise calculation
     const amountInWei = BigInt(
@@ -131,6 +76,7 @@ export const transferToken = async (
       [transferCall],
       feesDetails
     );
+
     await starknetProvider.waitForTransaction(res.transaction_hash);
     console.log("Transfer successful:", res);
   } catch (error) {
@@ -138,9 +84,4 @@ export const transferToken = async (
   } finally {
     setIsLoading(false);
   }
-};
-
-export const checkGaslessCompatibility = async (accountAddress: string) => {
-  const compatibility = await fetchAccountCompatibility(accountAddress);
-  console.log("Gasless Compatible:", compatibility.isCompatible);
 };
