@@ -7,8 +7,9 @@ import {
   CallData,
   ec,
   hash,
+  PaymasterDetails,
   PaymasterRpc,
-  RpcProvider,
+  RpcProvider
 } from "starknet";
 import { keccak256 } from "js-sha3";
 
@@ -65,42 +66,11 @@ export function getStarkKey({ privateKey }: { privateKey: string }) {
   }
 }
 
-// Step 3: Calculate precalculated address
-// export const calculateAccountAddress = ({
-//   starkKeyPub,
-// }: {
-//   starkKeyPub: string;
-// }) => {
-//   const OZaccountConstructorCallData = CallData.compile({
-//     publicKey: starkKeyPub,
-//   });
-
-//   const OZcontractAddress = hash.calculateContractAddressFromHash(
-//     starkKeyPub,
-//     OZaccountClassHash,
-//     OZaccountConstructorCallData,
-//     0
-//   );
-
-//   return { OZcontractAddress, OZaccountConstructorCallData };
-// };
-
 export const calculateAccountAddress = ({
   starkKeyPubAX,
 }: {
   starkKeyPubAX: string;
 }) => {
-  // const OZaccountConstructorCallData = CallData.compile({
-  //   publicKey: starkKeyPub,
-  // });
-
-  // const OZcontractAddress = hash.calculateContractAddressFromHash(
-  //   starkKeyPub,
-  //   OZaccountClassHash,
-  //   OZaccountConstructorCallData,
-  //   0
-  // );
-
   const axSigner = new CairoCustomEnum({ Starknet: { pubkey: starkKeyPubAX } });
   const axGuardian = new CairoOption<unknown>(CairoOptionVariant.None);
   const AXConstructorCallData = CallData.compile({
@@ -117,64 +87,6 @@ export const calculateAccountAddress = ({
 
   return { AXcontractAddress, AXConstructorCallData };
 };
-
-// Step 4: Deploy the account
-// export async function deployAccount({
-//   web3authProvider,
-//   starknetProvider,
-//   paymasterRpc,
-// }: {
-//   web3authProvider: IProvider;
-//   starknetProvider: RpcProvider;
-//   paymasterRpc: PaymasterRpc;
-// }) {
-//   try {
-//     // ✅ 1. Get valid Starknet-compatible private key
-//     const validPrivateKey = await getValidPrivateKey({
-//       provider: web3authProvider,
-//     });
-//     console.log("✅ Grinded private key:", validPrivateKey);
-
-//     // ✅ 2. Derive the matching public key
-//     const starkKeyPub = getStarkKey({ privateKey: validPrivateKey });
-//     console.log("✅ StarkNet public key:", starkKeyPub);
-
-//     // ✅ 3. Calculate the deterministic address
-//     const { OZcontractAddress, OZaccountConstructorCallData } =
-//       calculateAccountAddress({ starkKeyPub });
-
-//     console.log("✅ Calculated address:", OZcontractAddress);
-
-//     // ✅ 4. Create account instance with correct key
-//     const OZaccount = new Account(
-//       starknetProvider,
-//       OZcontractAddress,
-//       validPrivateKey,
-//       undefined,
-//       undefined,
-//       paymasterRpc
-//     );
-
-//     console.log("✅ Account instance created");
-
-//     // ✅ 5. Deploy the account with correct calldata and salt
-//     const { transaction_hash, contract_address } =
-//       await OZaccount.deployAccount({
-//         classHash: OZaccountClassHash,
-//         constructorCalldata: OZaccountConstructorCallData,
-//         contractAddress: OZcontractAddress,
-//         addressSalt: starkKeyPub,
-//       });
-
-//     await starknetProvider.waitForTransaction(transaction_hash);
-//     console.log("🎉 Final deployed address:", contract_address);
-
-//     return contract_address;
-//   } catch (error) {
-//     console.error("❌ Account deployment failed:", error);
-//     throw error;
-//   }
-// }
 
 export async function deployAccount({
   web3authProvider,
@@ -203,46 +115,6 @@ export async function deployAccount({
     console.log("✅ Calculated address:", AXcontractAddress);
     console.log({ AXConstructorCallData });
 
-    // ✅ 5. Deploy the account with correct calldata and salt
-    // const { transaction_hash, contract_address } =
-    //   await OZaccount.deployAccount({
-    //     classHash: OZaccountClassHash,
-    //     constructorCalldata: OZaccountConstructorCallData,
-    //     contractAddress: OZcontractAddress,
-    //     addressSalt: starkKeyPub,
-    //   });
-
-    const deploymentData = {
-      class_hash: argentXaccountClassHash,
-      salt: starkKeyPub,
-      unique: "0x1",
-      calldata: AXConstructorCallData.map((x) => {
-        const hex = BigInt(x).toString(16);
-        return `0x${hex}`;
-      }),
-    };
-
-    const buildTypedDataResponse = await fetch(
-      `${paymasterUrl}/paymaster/v1/build-typed-data`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "api-key": "874b0d50-e322-4cd4-ad3c-e8810b3d37f0",
-        },
-        body: JSON.stringify({
-          userAddress: AXcontractAddress,
-          calls: [],
-          deploymentData,
-          accountClassHash: argentXaccountClassHash,
-        }),
-      }
-    );
-
-    if (!buildTypedDataResponse.ok) {
-      throw new Error("Failed to build typed data");
-    }
-
     // ✅ 4. Create account instance with correct key
     const AXaccount = new Account(
       starknetProvider,
@@ -254,41 +126,23 @@ export async function deployAccount({
     );
     console.log("✅ Account instance created");
 
-    const typedData = await buildTypedDataResponse.json();
-    console.log({ typedData });
-
-    const signedTypedData = await AXaccount.signMessage(typedData);
-
-    console.log({ signedTypedData });
-
-    // const signature = convertSignedMessage(signedTypedData);
-
-    // const executeResponse = await fetch(
-    //   `${paymasterUrl}/paymaster/v1/execute`,
-    //   {
-    //     method: "POST",
-    //     headers: {
-    //       "Content-Type": "application/json",
-    //       "api-key": "874b0d50-e322-4cd4-ad3c-e8810b3d37f0",
-    //     },
-    //     body: JSON.stringify({
-    //       userAddress: AXcontractAddress,
-    //       typedData: JSON.stringify(typedData),
-    //       signature,
-    //       deploymentData,
-    //     }),
-    //   }
-    // );
-
-    // if (!executeResponse.ok) {
-    //   throw new Error("Failed to execute deployment");
-    // }
-
-    // const executeResult = await executeResponse.json();
-    // console.log(executeResult);
-
-    // await starknetProvider.waitForTransaction(executeResult.transaction_hash);
-    // console.log("🎉 Final deployed address:", AXcontractAddress);
+    // ✅ 5. Calculate deploymentData
+    const accountPayload = {
+      class_hash: argentXaccountClassHash,
+      calldata: AXConstructorCallData.map(x => {
+        const hex = BigInt(x).toString(16);
+        return `0x${hex}`;
+      }),
+      address: AXcontractAddress,
+      salt: starkKeyPub,
+    };
+    
+    const feesDetails: PaymasterDetails = {
+      feeMode: { mode: "sponsored" },
+      deploymentData: { ...accountPayload, version: 1 as 1 },
+    };
+    const resp = AXaccount.executePaymasterTransaction([], feesDetails);
+    console.log('Account deployed successfully:', resp);
 
     return AXcontractAddress;
   } catch (error) {

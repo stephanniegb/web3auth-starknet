@@ -61,6 +61,7 @@ export default function Home() {
       : process.env.NEXT_PUBLIC_STARKNET_JSON_RPC_URL_SEPOLIA,
   });
 
+  console.log('API Key:', process.env.NEXT_PUBLIC_PAYMASTER_API_KEY);
   const myPaymasterRpc = new PaymasterRpc({
     nodeUrl: "https://sepolia.paymaster.avnu.fi",
     headers: {
