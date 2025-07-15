@@ -26,6 +26,7 @@ interface LoggedInProps {
   onDisconnect: () => void;
   onTransferRecipientChange: (value: string) => void;
   onTransferAmountChange: (value: string) => void;
+  onGetDeploymentStatus: () => void;
 }
 
 export default function LoggedIn({
@@ -46,6 +47,7 @@ export default function LoggedIn({
   onDisconnect,
   onTransferRecipientChange,
   onTransferAmountChange,
+  onGetDeploymentStatus,
 }: LoggedInProps) {
   return (
     <div className="dashboard">

@@ -9,7 +9,8 @@ import {
   hash,
   PaymasterDetails,
   PaymasterRpc,
-  RpcProvider
+  ProviderInterface,
+  RpcProvider,
 } from "starknet";
 import { keccak256 } from "js-sha3";
 
@@ -94,7 +95,7 @@ export async function deployAccount({
   paymasterRpc,
 }: {
   web3authProvider: IProvider;
-  starknetProvider: RpcProvider;
+  starknetProvider: ProviderInterface;
   paymasterRpc: PaymasterRpc;
 }) {
   try {
@@ -129,20 +130,20 @@ export async function deployAccount({
     // ✅ 5. Calculate deploymentData
     const accountPayload = {
       class_hash: argentXaccountClassHash,
-      calldata: AXConstructorCallData.map(x => {
+      calldata: AXConstructorCallData.map((x) => {
         const hex = BigInt(x).toString(16);
         return `0x${hex}`;
       }),
       address: AXcontractAddress,
       salt: starkKeyPub,
     };
-    
+
     const feesDetails: PaymasterDetails = {
       feeMode: { mode: "sponsored" },
       deploymentData: { ...accountPayload, version: 1 as 1 },
     };
     const resp = AXaccount.executePaymasterTransaction([], feesDetails);
-    console.log('Account deployed successfully:', resp);
+    console.log("Account deployed successfully:", resp);
 
     return AXcontractAddress;
   } catch (error) {
@@ -150,3 +151,20 @@ export async function deployAccount({
     throw error;
   }
 }
+
+export const getDeploymentStatus = async ({
+  starknetProvider,
+  contractAddress,
+}: {
+  starknetProvider: ProviderInterface;
+  contractAddress: string;
+}) => {
+  try {
+    await starknetProvider.getClassHashAt(contractAddress);
+
+    return true;
+  } catch (error) {
+    console.error("❌ Error getting deployment status:", error);
+    return false;
+  }
+};

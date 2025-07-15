@@ -1,7 +1,6 @@
 "use client";
 import "./globals.css";
-import { Web3AuthProvider } from "@web3auth/modal/react";
-import web3AuthContextConfig from "./web3authContext";
+import Provider from "./Provider";
 
 export default function RootLayout({
   children,
@@ -11,9 +10,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Web3AuthProvider config={web3AuthContextConfig}>
-          {children}
-        </Web3AuthProvider>
+        <Provider>{children}</Provider>
       </body>
     </html>
   );
