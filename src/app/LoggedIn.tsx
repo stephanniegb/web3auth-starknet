@@ -47,7 +47,6 @@ export default function LoggedIn({
   onDisconnect,
   onTransferRecipientChange,
   onTransferAmountChange,
-  onGetDeploymentStatus,
 }: LoggedInProps) {
   return (
     <div className="dashboard">

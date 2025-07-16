@@ -137,7 +137,7 @@ export async function deployAccount({
 
     const feesDetails: PaymasterDetails = {
       feeMode: { mode: "sponsored" },
-      deploymentData: { ...accountPayload, version: 1 as 1 },
+      deploymentData: { ...accountPayload, version: 1 as const },
     };
     const resp = AXaccount.executePaymasterTransaction([], feesDetails);
     console.log("Account deployed successfully:", resp);
