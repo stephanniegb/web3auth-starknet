@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useRef } from "react";
 
 export type Address = `0x${string}`;
 
@@ -42,6 +42,33 @@ export function AccountProvider({
   children: React.ReactNode;
 }) {
   const { userInfo } = useWeb3AuthUser();
+  const prevStateRef = useRef({ account, address, userInfo });
+
+  useEffect(() => {
+    const prevState = prevStateRef.current;
+    const currentState = { account, address, userInfo };
+
+    // Only log if there are meaningful changes
+    const hasAccountChange = prevState.account !== account;
+    const hasAddressChange = prevState.address !== address;
+    const hasUserInfoChange = prevState.userInfo !== userInfo;
+
+    if (hasAccountChange || hasAddressChange || hasUserInfoChange) {
+      console.log("🔄 AccountProvider state changed:", {
+        account: account ? "Account exists" : "No account",
+        address: address || "No address",
+        userInfo: userInfo ? "User info exists" : "No user info",
+        changes: {
+          account: hasAccountChange,
+          address: hasAddressChange,
+          userInfo: hasUserInfoChange,
+        },
+      });
+
+      // Update the ref with current state
+      prevStateRef.current = currentState;
+    }
+  }, [account, address, userInfo]);
 
   return (
     <AccountContext.Provider

@@ -8,7 +8,8 @@ import { Account } from "starknet";
 import LoggedIn from "./LoggedIn";
 import LoggedOut from "./LoggedOut";
 import { useStarknet } from "@/context/starknet";
-import { useStarknetAccount } from "@/context/account";
+import { useAccount } from "@/hooks/use-account";
+import { useWeb3AuthStatus } from "@/hooks/use-web3auth-status";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,16 +18,42 @@ export default function Home() {
   const [strkBalance, setStrkBalance] = useState<string>("0");
 
   const { provider: starknetProvider, connect, disconnect } = useStarknet();
-  const { account, address, web3AuthConnection, web3AuthDisconnect, userInfo } =
-    useStarknetAccount();
+  const {
+    account,
+    address,
+    web3AuthConnection,
+    web3AuthDisconnect,
+    userInfo,
+    web3AuthConnectorError,
+  } = useAccount();
 
-  console.log({
+  // New Web3Auth status hook for better error handling and user feedback
+  const {
+    status: web3AuthStatus,
+    isConnected: isWeb3AuthConnected,
+    isInitializing: isWeb3AuthInitializing,
+    initError: web3AuthInitError,
+    error: starknetError,
+    hasError,
+    getErrorMessage,
+    isReady,
+  } = useWeb3AuthStatus();
+
+  console.log("🔄 StarknetPage values:", {
     starknetProvider,
     account,
     address,
     web3AuthConnection,
     web3AuthDisconnect,
     userInfo,
+    // Web3Auth status for debugging
+    web3AuthStatus,
+    isWeb3AuthConnected,
+    isWeb3AuthInitializing,
+    web3AuthInitError,
+    starknetError,
+    hasError,
+    isReady,
   });
 
   const handleFetchBalance = () => {
@@ -96,7 +123,7 @@ export default function Home() {
             transferAmount={transferAmount}
             isLoading={isLoading}
             disconnectLoading={web3AuthDisconnect?.loading ?? false}
-            disconnectError={web3AuthDisconnect?.error}
+            disconnectError={web3AuthConnectorError}
             onDeployAccount={() => {}}
             onConnectAccount={() => {}}
             onFetchBalance={handleFetchBalance}
@@ -141,6 +168,13 @@ export default function Home() {
           <LoggedOut
             connectLoading={web3AuthConnection?.loading ?? false}
             connectError={web3AuthConnection?.error}
+            web3AuthStatus={web3AuthStatus}
+            isWeb3AuthInitializing={isWeb3AuthInitializing}
+            web3AuthInitError={web3AuthInitError}
+            starknetError={starknetError}
+            hasError={hasError}
+            errorMessage={getErrorMessage()}
+            isReady={isReady}
             onConnect={handleConnect}
           />
         </main>

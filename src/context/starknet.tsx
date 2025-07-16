@@ -61,8 +61,19 @@ export interface StarknetState {
   provider: ProviderInterface;
   /** Current paymaster provider */
   paymasterProvider?: PaymasterRpc;
+  /** Current web3auth provider */
+  web3AuthProvider?: IProvider | null;
   /** Error. */
   error?: Error;
+
+  /** Web3Auth connection status */
+  web3AuthStatus?: string | null;
+  /** Web3Auth connection state */
+  isWeb3AuthConnected?: boolean;
+  /** Web3Auth initialization state */
+  isWeb3AuthInitializing?: boolean;
+  /** Web3Auth initialization error */
+  web3AuthInitError?: Error | null;
 }
 
 const StarknetContext = createContext<StarknetState | undefined>(undefined);
@@ -82,6 +93,7 @@ interface StarknetManagerState {
   currentAddress?: Address;
   currentProvider: ProviderInterface;
   currentPaymasterProvider?: PaymasterRpc;
+  currentWeb3AuthProvider?: IProvider | null;
   currentAccount?: AccountInterface;
   error?: Error;
 }
@@ -142,10 +154,18 @@ function useStarknetManager({
     currentChain: defaultChain,
     currentProvider: defaultProvider,
     currentPaymasterProvider: defaultPaymasterProvider,
+    currentWeb3AuthProvider: null,
   });
 
-  const { provider: web3authProvider } = useWeb3Auth();
+  const {
+    provider: web3authProvider,
+    status, //not_ready connecting connected ready
+    isConnected, //boolean
+    isInitializing, //boolean
+    initError, //Error | null
+  } = useWeb3Auth();
   web3authProviderRef.current = web3authProvider;
+  state.currentWeb3AuthProvider = web3authProvider;
 
   // Dependencies intentionally omitted since we only want
   // this executed when defaultChain is updated.
@@ -295,10 +315,15 @@ function useStarknetManager({
     connector: connectorRef.current,
     web3AuthConnection: connectorRef.current,
     web3AuthDisconnect: Web3AuthDisconnectRef.current,
+    web3AuthProvider: state.currentWeb3AuthProvider,
     connect,
     disconnect,
     chains,
     error: state.error,
+    web3AuthStatus: status,
+    isWeb3AuthConnected: isConnected,
+    isWeb3AuthInitializing: isInitializing,
+    web3AuthInitError: initError as Error | null,
   };
 }
 
