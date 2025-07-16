@@ -1,10 +1,16 @@
-import { Account, Contract, RpcProvider } from "starknet";
+import {
+  AccountInterface,
+  Contract,
+  CallData,
+  Call,
+  ProviderInterface,
+} from "starknet";
 import { CONTRACT_ABI } from "@/abi";
 import { CONTRACT_ADDRESS } from "@/address";
 
 export const fetchBalance = async (
   address: string,
-  starknetProvider: RpcProvider,
+  starknetProvider: ProviderInterface,
   setStrkBalance: (balance: string) => void
 ) => {
   if (!address || !starknetProvider) {
@@ -33,8 +39,8 @@ export const fetchBalance = async (
 };
 
 export const transferToken = async (
-  account: Account,
-  starknetProvider: RpcProvider,
+  account: AccountInterface,
+  starknetProvider: ProviderInterface,
   transferRecipient: string,
   transferAmount: string,
   setIsLoading: (loading: boolean) => void
@@ -62,8 +68,19 @@ export const transferToken = async (
       Math.floor(parseFloat(transferAmount) * Math.pow(10, 18))
     ).toString();
 
-    const contract = new Contract(CONTRACT_ABI, CONTRACT_ADDRESS, account);
-    const res = await contract.transfer(transferRecipient, amountInWei);
+    const transferCallData: CallData = new CallData(CONTRACT_ABI);
+    const transferCall: Call = {
+      contractAddress: CONTRACT_ADDRESS,
+      entrypoint: "transfer",
+      calldata: transferCallData.compile("transfer", [
+        transferRecipient,
+        amountInWei,
+      ]),
+    };
+    console.log({ transferCall, amountInWei });
+
+    const res = await account.execute([transferCall]);
+
     await starknetProvider.waitForTransaction(res.transaction_hash);
     console.log("Transfer successful:", res);
   } catch (error) {

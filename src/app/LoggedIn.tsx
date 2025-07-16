@@ -26,6 +26,7 @@ interface LoggedInProps {
   onDisconnect: () => void;
   onTransferRecipientChange: (value: string) => void;
   onTransferAmountChange: (value: string) => void;
+  onGetDeploymentStatus: () => void;
 }
 
 export default function LoggedIn({

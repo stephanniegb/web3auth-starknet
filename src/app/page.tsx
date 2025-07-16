@@ -1,140 +1,63 @@
 "use client";
 
-import {
-  useWeb3Auth,
-  useWeb3AuthConnect,
-  useWeb3AuthDisconnect,
-  useWeb3AuthUser,
-} from "@web3auth/modal/react";
-import {
-  deployAccount,
-  getStarkKey,
-  calculateAccountAddress,
-  getValidPrivateKey,
-} from "./starknetRPC";
+import { getDeploymentStatus } from "./starknetRPC";
 import { fetchBalance, transferToken } from "./tokenOperations";
-import { useEffect, useState } from "react";
-import { Account, RpcProvider } from "starknet";
+import { useState } from "react";
+import { Account } from "starknet";
 
 import LoggedIn from "./LoggedIn";
 import LoggedOut from "./LoggedOut";
-
-const isProduction = process.env.NODE_ENV === "production";
+import { useStarknet } from "@/context/starknet";
+import { useAccount } from "@/hooks/use-account";
+import { useWeb3AuthStatus } from "@/hooks/use-web3auth-status";
 
 export default function Home() {
-  // State management
-  const [account, setAccount] = useState<Account | null>(null);
-  const [address, setAddress] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [transferRecipient, setTransferRecipient] = useState<string>("");
   const [transferAmount, setTransferAmount] = useState<string>("1");
   const [strkBalance, setStrkBalance] = useState<string>("0");
 
-  // Web3Auth hooks
+  const { provider: starknetProvider, connect, disconnect } = useStarknet();
   const {
-    connect,
-    isConnected,
-    connectorName,
-    loading: connectLoading,
-    error: connectError,
-  } = useWeb3AuthConnect();
+    account,
+    address,
+    web3AuthConnection,
+    web3AuthDisconnect,
+    userInfo,
+    web3AuthConnectorError,
+  } = useAccount();
 
+  // New Web3Auth status hook for better error handling and user feedback
   const {
-    disconnect,
-    loading: disconnectLoading,
-    error: disconnectError,
-  } = useWeb3AuthDisconnect();
+    status: web3AuthStatus,
+    isConnected: isWeb3AuthConnected,
+    isInitializing: isWeb3AuthInitializing,
+    initError: web3AuthInitError,
+    error: starknetError,
+    hasError,
+    getErrorMessage,
+    isReady,
+  } = useWeb3AuthStatus();
 
-  const { provider: web3authProvider } = useWeb3Auth();
-  const { userInfo } = useWeb3AuthUser();
-
-  // StarkNet provider setup
-  const starknetProvider = new RpcProvider({
-    nodeUrl: isProduction
-      ? process.env.NEXT_PUBLIC_STARKNET_JSON_RPC_URL_MAINNET
-      : process.env.NEXT_PUBLIC_STARKNET_JSON_RPC_URL_SEPOLIA,
+  console.log("🔄 StarknetPage values:", {
+    starknetProvider,
+    account,
+    address,
+    web3AuthConnection,
+    web3AuthDisconnect,
+    userInfo,
+    // Web3Auth status for debugging
+    web3AuthStatus,
+    isWeb3AuthConnected,
+    isWeb3AuthInitializing,
+    web3AuthInitError,
+    starknetError,
+    hasError,
+    isReady,
   });
 
-  // Effect to get address when provider is available
-  useEffect(() => {
-    if (!web3authProvider) {
-      console.log("provider not initialized yet");
-      return;
-    }
-
-    const getAddress = async () => {
-      const privateKey = await getValidPrivateKey({
-        provider: web3authProvider,
-      });
-
-      const starkKeyPub = getStarkKey({ privateKey: privateKey });
-      if (!starkKeyPub) {
-        console.error("Starkey is undefined or null");
-        return;
-      }
-
-      const { OZcontractAddress } = calculateAccountAddress({
-        starkKeyPub: starkKeyPub,
-      });
-
-      setAddress(OZcontractAddress);
-    };
-
-    getAddress();
-  }, [web3authProvider]);
-
-  // Effect to fetch balance when address changes
-  useEffect(() => {
-    if (address) {
-      fetchBalance(address, starknetProvider, setStrkBalance);
-    }
-  }, [address]);
-
-  // Deploy  account functions
-  const onDeployAccount = async () => {
-    if (!web3authProvider) {
-      console.log("provider not initialized yet");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const address = await deployAccount({
-        web3authProvider,
-        starknetProvider,
-      });
-      console.log("New account created.\n   final address =", address);
-      setAddress(address);
-    } catch (error) {
-      console.error("Error deploying account:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Connect account function
-  const onConnectAccount = async () => {
-    if (!web3authProvider) {
-      console.log("provider not initialized yet");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const privateKey = await getValidPrivateKey({
-        provider: web3authProvider,
-      });
-
-      const account = new Account(starknetProvider, address, privateKey);
-      setAccount(account);
-    } catch (error) {
-      console.error("Error connecting account:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleFetchBalance = () => {
-    fetchBalance(address, starknetProvider, setStrkBalance);
+    fetchBalance(address as string, starknetProvider, setStrkBalance);
   };
 
   const handleTransferToken = () => {
@@ -164,8 +87,15 @@ export default function Home() {
     disconnect();
   };
 
+  const handleGetDeploymentStatus = () => {
+    getDeploymentStatus({
+      contractAddress: address as string,
+      starknetProvider,
+    });
+  };
+
   // Render based on connection state
-  if (isConnected) {
+  if (web3AuthConnection?.isConnected) {
     return (
       <div className="app-container">
         <header className="app-header">
@@ -185,22 +115,23 @@ export default function Home() {
         <main className="app-main">
           <LoggedIn
             userInfo={userInfo}
-            address={address}
-            account={account}
+            address={address as string}
+            account={account as Account}
             strkBalance={strkBalance}
-            connectorName={connectorName}
+            connectorName={web3AuthConnection?.connectorName ?? null}
             transferRecipient={transferRecipient}
             transferAmount={transferAmount}
             isLoading={isLoading}
-            disconnectLoading={disconnectLoading}
-            disconnectError={disconnectError}
-            onDeployAccount={onDeployAccount}
-            onConnectAccount={onConnectAccount}
+            disconnectLoading={web3AuthDisconnect?.loading ?? false}
+            disconnectError={web3AuthConnectorError}
+            onDeployAccount={() => {}}
+            onConnectAccount={() => {}}
             onFetchBalance={handleFetchBalance}
             onTransferToken={handleTransferToken}
             onDisconnect={handleDisconnect}
             onTransferRecipientChange={handleTransferRecipientChange}
             onTransferAmountChange={handleTransferAmountChange}
+            onGetDeploymentStatus={handleGetDeploymentStatus}
           />
         </main>
 
@@ -235,8 +166,15 @@ export default function Home() {
 
         <main className="app-main">
           <LoggedOut
-            connectLoading={connectLoading}
-            connectError={connectError}
+            connectLoading={web3AuthConnection?.loading ?? false}
+            connectError={web3AuthConnection?.error}
+            web3AuthStatus={web3AuthStatus}
+            isWeb3AuthInitializing={isWeb3AuthInitializing}
+            web3AuthInitError={web3AuthInitError}
+            starknetError={starknetError}
+            hasError={hasError}
+            errorMessage={getErrorMessage()}
+            isReady={isReady}
             onConnect={handleConnect}
           />
         </main>
