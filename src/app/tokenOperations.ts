@@ -1,7 +1,6 @@
 import {
   AccountInterface,
   Contract,
-  RpcProvider,
   CallData,
   Call,
   ProviderInterface,

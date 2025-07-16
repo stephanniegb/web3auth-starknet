@@ -135,7 +135,7 @@ function useStarknetManager({
     seen.add(chain.id);
   }
 
-  const { chain: _, provider: defaultProvider } = providerForChain(
+  const { provider: defaultProvider } = providerForChain(
     defaultChain,
     provider
   );

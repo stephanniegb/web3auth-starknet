@@ -10,7 +10,6 @@ import {
   PaymasterDetails,
   PaymasterRpc,
   ProviderInterface,
-  RpcProvider,
 } from "starknet";
 import { keccak256 } from "js-sha3";
 
@@ -19,8 +18,6 @@ export const OZaccountClassHash =
 
 export const argentXaccountClassHash =
   "0x036078334509b514626504edc9fb252328d1a240e4e948bef8d0c08dff45927f";
-
-const paymasterUrl = "https://sepolia.paymaster.avnu.fi";
 
 /*
   Starknet uses a specific elliptic curve (Stark curve), which has a much smaller valid private key range than secp256k1 (used by EVM chains). The private key you receive from Web3Auth might be a random 32-byte value, which can sometimes be out of Starknet’s valid range.
