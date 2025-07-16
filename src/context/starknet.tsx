@@ -402,9 +402,30 @@ export function starknetChainId(
   }
 }
 
-function avnuPaymasterProvider() {
+function avnuPaymasterProvider(chain?: Chain) {
+  let nodeUrl: string;
+
+  if (!chain) {
+    // Default to Sepolia if no chain provided
+    nodeUrl = "https://sepolia.paymaster.avnu.fi";
+  } else {
+    // Determine URL based on chain ID
+    switch (chain.id) {
+      case mainnet.id:
+        nodeUrl = "https://starknet.paymaster.avnu.fi/";
+        break;
+      case sepolia.id:
+        nodeUrl = "https://sepolia.paymaster.avnu.fi";
+        break;
+      default:
+        // Fallback to Sepolia for unknown chains
+        nodeUrl = "https://sepolia.paymaster.avnu.fi";
+        break;
+    }
+  }
+
   const myPaymasterRpc = new PaymasterRpc({
-    nodeUrl: "https://sepolia.paymaster.avnu.fi",
+    nodeUrl,
     headers: {
       "x-paymaster-api-key": process.env.NEXT_PUBLIC_PAYMASTER_API_KEY,
     },
